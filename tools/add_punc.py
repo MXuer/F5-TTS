@@ -62,7 +62,7 @@ def main(args):
         else:
             data.append({'wav_file': wav_file, 'text': text})
     print(len(data))
-    batch_punc(data)
+    batch_punc(data, 0, args.language)
     return
     thead_nums = 128
 
