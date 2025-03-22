@@ -28,7 +28,7 @@ def main(args):
         if re.sub('[a-zA-Z0-9]', '', jyutpings).strip(): 
             error_numbers += 1
             continue
-        print(line.strip())
+        print(f'{wav_file}|{text}')
         for jyup in jyutpings.split():
             vocab_dict[jyup] += 1
 
