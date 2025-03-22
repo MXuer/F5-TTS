@@ -15,7 +15,7 @@ def main(args):
     cons = open(csv_file).readlines()
     vocab_dict = defaultdict(lambda : 0)
     error_numbers = 0
-    for line in tqdm(cons[:30], desc='extracting the vocabs for jyutping'):
+    for line in tqdm(cons, desc='extracting the vocabs for jyutping'):
         wav_file, text = line.strip().split('|')
         text = text.replace('*', '')
         flag = True if re.findall('([\u4e00-\u9fa5]) +([\u4e00-\u9fa5])', text) else False
@@ -28,14 +28,9 @@ def main(args):
         if re.sub('[a-zA-Z0-9]', '', jyutpings).strip(): 
             error_numbers += 1
             continue
-        print(text, jyutpings)
+        print(line.strip())
         for jyup in jyutpings.split():
             vocab_dict[jyup] += 1
-
-    print(vocab_dict)
-    print(len(vocab_dict))
-    print(error_numbers)
-
 
 
 
