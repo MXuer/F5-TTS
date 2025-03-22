@@ -11,8 +11,9 @@ from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 client = OpenAI(api_key='test', base_url="http://10.10.23.11:8000/v1")
 def single_request(info, language: str):
-    prompt = f"""任务：给{language}文本加上「标点符号」，不要修改原始文本的文字。
-    输出格式为json，字段包括<punc_text>，对应的值为加完标点之后的文本。: 
+    prompt = f"""任务：给{language}文本加上「标点符号」。
+    输出格式为json，字段包括<punc_text>，对应的值为加完标点之后的文本。
+    重点要求：不要修改原始文本，请检查输入和输出的文本（去掉标点之后）是否完全一致！！
     文本为：\n
     {info}"""
     response = client.chat.completions.create(
@@ -69,7 +70,7 @@ def main(args):
         else:
             data.append({'wav_file': wav_file, 'text': text})
     print(len(data))
-    
+
     thead_nums = 128
 
     each_nums = len(data) // thead_nums + 1
