@@ -29,14 +29,21 @@ def batch_punc(data, index, language):
         text = item['text'].replace(' ', '').replace('*', '')
         punc_result = single_request(text, language)
         punc_result_remove_think = punc_result.split('</think>')[-1].strip()
-        print(punc_result_remove_think)
-        # punc_result_no_punc = re.sub('[，。？！、]', '', punc_result_remove_think)
-        # if text == punc_result_no_punc:
-        #     results_dict[item['wav_file']] = punc_result_remove_think
-        # else:
-        #     print(text, punc_result_remove_think)
+        json_results = re.findall("\{.*?\}", punc_result_remove_think, re.DOTALL)
+        try:
+            if json_results:
+                text_with_punc = json.loads(json_results[0])['punc_text']
+                punc_result_no_punc = re.sub('[，。？！、]', '', text_with_punc)
+                if text == punc_result_no_punc:
+                    results_dict[item['wav_file']] = text_with_punc
+                else:
+                    print(text, punc_result_remove_think)
+            else:
+                print(text, punc_result_remove_think)
+        except Exception:
+            print(text, punc_result_remove_think)
 
-    # return results_dict
+    return results_dict
 
 def main(args):
     csv_file = Path(args.csv_file)
@@ -62,8 +69,7 @@ def main(args):
         else:
             data.append({'wav_file': wav_file, 'text': text})
     print(len(data))
-    batch_punc(data, 0, args.language)
-    return
+    
     thead_nums = 128
 
     each_nums = len(data) // thead_nums + 1
