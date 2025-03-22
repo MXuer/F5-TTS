@@ -53,7 +53,7 @@ def main(args):
     exp_dir.mkdir(exist_ok=True, parents=True)
 
 
-    cons = open(args.csv_file, 'r', encoding='utf-8').readlines()
+    raw_cons = open(args.csv_file, 'r', encoding='utf-8').readlines()
 
     while True:
     
@@ -66,7 +66,7 @@ def main(args):
 
         data = []
 
-        for line in cons:
+        for line in raw_cons:
             wav_file, text = line.strip().split('|')
             if wav_file in done_results:
                 continue
