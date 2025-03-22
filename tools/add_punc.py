@@ -11,7 +11,9 @@ from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 client = OpenAI(api_key='test', base_url="http://10.10.23.11:8000/v1")
 def single_request(info, language: str):
-    prompt = f"""任务：给{language}文本加上「标点符号」，输出的时候不要修改输入的文本。请检查下文字内容是不是没有变化。请直接输出加标点之后的文本，不要输出其他内容。文本为：\n
+    prompt = f"""任务：给{language}文本加上「标点符号」，不要修改原始文本的文字。
+    输出格式为json，字段包括<punc_text>，对应的值为加完标点之后的文本。: 
+    文本为：\n
     {info}"""
     response = client.chat.completions.create(
         model="Qwen/QwQ-32B",
@@ -27,13 +29,14 @@ def batch_punc(data, index, language):
         text = item['text'].replace(' ', '').replace('*', '')
         punc_result = single_request(text, language)
         punc_result_remove_think = punc_result.split('</think>')[-1].strip()
-        punc_result_no_punc = re.sub('[，。？！、]', '', punc_result_remove_think)
-        if text == punc_result_no_punc:
-            results_dict[item['wav_file']] = punc_result_remove_think
-        else:
-            print(text, punc_result_remove_think)
+        print(punc_result_remove_think)
+        # punc_result_no_punc = re.sub('[，。？！、]', '', punc_result_remove_think)
+        # if text == punc_result_no_punc:
+        #     results_dict[item['wav_file']] = punc_result_remove_think
+        # else:
+        #     print(text, punc_result_remove_think)
 
-    return results_dict
+    # return results_dict
 
 def main(args):
     csv_file = Path(args.csv_file)
@@ -59,7 +62,8 @@ def main(args):
         else:
             data.append({'wav_file': wav_file, 'text': text})
     print(len(data))
-
+    batch_punc(data)
+    return
     thead_nums = 128
 
     each_nums = len(data) // thead_nums + 1
