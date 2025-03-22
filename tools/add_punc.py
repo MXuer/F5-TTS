@@ -58,7 +58,8 @@ def main(args):
             continue
         else:
             data.append({'wav_file': wav_file, 'text': text})
-    
+    print(len(data))
+    return
     thead_nums = 128
 
     each_nums = len(data) // thead_nums + 1
@@ -83,7 +84,7 @@ def main(args):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--csv-file', default='', type=str)
+    parser.add_argument('--csv-file', default='data/ct/metadata_clean.csv', type=str)
     parser.add_argument('--language', default='粤语', type=str)
     args = parser.parse_args()
     main(args)
