@@ -59,7 +59,7 @@ def main(args):
         else:
             data.append({'wav_file': wav_file, 'text': text})
     print(len(data))
-    return
+
     thead_nums = 128
 
     each_nums = len(data) // thead_nums + 1
