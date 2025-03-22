@@ -1,7 +1,7 @@
 import re
 import json
 import argparse
-
+from time import sleep
 from tqdm import tqdm
 from pathlib import Path
 from openai import OpenAI
@@ -52,46 +52,58 @@ def main(args):
     exp_dir = csv_file.parent / 'temp_punc'
     exp_dir.mkdir(exist_ok=True, parents=True)
 
-    done_files = exp_dir.glob("*.json")
-
-    done_results = {}
-    for done_file in done_files:
-        cons = json.load(open(done_file, 'r', encoding='utf-8'))
-        done_results.update(cons)
 
     cons = open(args.csv_file, 'r', encoding='utf-8').readlines()
+
+    while True:
     
-    data = []
+        done_files = exp_dir.glob("*.json")
 
-    for line in cons:
-        wav_file, text = line.strip().split('|')
-        if wav_file in done_results:
-            continue
-        else:
-            data.append({'wav_file': wav_file, 'text': text})
-    print(len(data))
+        done_results = {}
+        for done_file in done_files:
+            cons = json.load(open(done_file, 'r', encoding='utf-8'))
+            done_results.update(cons)
 
-    thead_nums = 128
+        data = []
 
-    each_nums = len(data) // thead_nums + 1
+        for line in cons:
+            wav_file, text = line.strip().split('|')
+            if wav_file in done_results:
+                continue
+            else:
+                data.append({'wav_file': wav_file, 'text': text})
+        print(len(data))
 
-    batches = [data[each_nums*index:each_nums*(index+1)] for index in range(thead_nums)]
+        if not data:
+            break
 
-    with ThreadPoolExecutor(max_workers=thead_nums) as executor:
-        tasks = []
-        for index, batch in enumerate(batches):
-            task = executor.submit(batch_punc, batch, index, args.language)
-            tasks.append(task)
+        thead_nums = 128
 
-        wait(tasks, return_when=ALL_COMPLETED)
+        each_nums = len(data) // thead_nums + 1
 
-        new_results = {}
-        for task in tasks:
-            result = task.result()
-            new_results.update(result)
-    with open(exp_dir / f'{uuid.uuid4()}.json', 'w', encoding='utf-8') as f:
-        json.dump(new_results, f, ensure_ascii=False, indent=2)
+        batches = [data[each_nums*index:each_nums*(index+1)] for index in range(thead_nums)]
 
+        with ThreadPoolExecutor(max_workers=thead_nums) as executor:
+            tasks = []
+            for index, batch in enumerate(batches):
+                task = executor.submit(batch_punc, batch, index, args.language)
+                tasks.append(task)
+
+            wait(tasks, return_when=ALL_COMPLETED)
+
+            new_results = {}
+            for task in tasks:
+                result = task.result()
+                new_results.update(result)
+        with open(exp_dir / f'{uuid.uuid4()}.json', 'w', encoding='utf-8') as f:
+            json.dump(new_results, f, ensure_ascii=False, indent=2)
+        sleep(10)
+
+    des_csv_file = csv_file.parent / 'metadata.csv'
+    with open(des_csv_file, 'w') as f:
+        for wav, text in done_results:
+            f.write(f'{wav}|{text}\n')
+        
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
