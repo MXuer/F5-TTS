@@ -1,0 +1,8 @@
+root_dir: /share/dataocean/ASR
+data_dir: data
+
+language: ct
+
+datasets: ['King-ASR-083', 'King-ASR-070', 'King-ASR-086', 'King-ASR-449']
+
+

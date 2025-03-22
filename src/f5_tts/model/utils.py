@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import random
 from collections import defaultdict
 from importlib.resources import files
@@ -10,6 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 import jieba
 from pypinyin import lazy_pinyin, Style
+import pinyin_jyutping_sentence
 
 
 # seed everything
@@ -176,6 +178,33 @@ def convert_char_to_pinyin(text_list, polyphone=True):
         final_text_list.append(char_list)
 
     return final_text_list
+
+
+def convert_char_to_jyutping(text_list, polyphone=True):
+    final_text_list = []
+    for text in text_list:
+        
+        flag = True if re.findall('([\u4e00-\u9fa5]) +([\u4e00-\u9fa5])', text) else False
+        while flag:
+            text = re.sub("([\u4e00-\u9fa5]) +([\u4e00-\u9fa5])", lambda x:x.group(1)+x.group(2), text)
+            flag = True if re.findall('([\u4e00-\u9fa5]) +([\u4e00-\u9fa5])', text) else False
+        text = re.sub('([\u4e00-\u9fa5])([a-zA-Z])', lambda x:x.group(1)+" "+x.group(2), text)
+        text = re.sub('([a-zA-Z])([\u4e00-\u9fa5])', lambda x:x.group(1)+" "+x.group(2), text)
+        jyutpings = pinyin_jyutping_sentence.jyutping(text, spaces=True,tone_numbers=True)
+        char_list = [' ']
+        for item in jyutpings.split('  '):
+            if not re.sub('[a-zA-Z ]', '', item):
+                char_list.extend(item.split())
+                char_list.append(' ')
+            else:
+                for subitem in item.split():
+                    char_list.append(subitem)
+                    char_list.append(' ')
+
+        final_text_list.append(char_list)
+
+    return final_text_list
+
 
 
 # filter func for dirty data with many repetitions
