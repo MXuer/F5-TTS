@@ -30,6 +30,7 @@ from f5_tts.model import CFM
 from f5_tts.model.utils import (
     get_tokenizer,
     convert_char_to_pinyin,
+    convert_char_to_jyutping
 )
 
 _ref_audio_cache = {}
@@ -432,6 +433,7 @@ def infer_batch_process(
     device=None,
     streaming=False,
     chunk_size=2048,
+    language='ct'
 ):
     audio, sr = ref_audio
     if audio.shape[0] > 1:
@@ -458,7 +460,10 @@ def infer_batch_process(
 
         # Prepare the text
         text_list = [ref_text + gen_text]
-        final_text_list = convert_char_to_pinyin(text_list)
+        if language == 'ct':
+            final_text_list = convert_char_to_jyutping(text_list)
+        else:
+            final_text_list = convert_char_to_pinyin(text_list)
 
         ref_audio_len = audio.shape[-1] // hop_length
         if fix_duration is not None:
