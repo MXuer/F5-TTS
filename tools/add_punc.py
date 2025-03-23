@@ -13,7 +13,7 @@ client = OpenAI(api_key='test', base_url="http://10.10.23.11:8000/v1")
 def single_request(info, language: str):
     prompt = f"""任务：给{language}文本加上「标点符号」。
     输出格式为json，字段包括<punc_text>，对应的值为加完标点之后的文本。
-    重点要求：不要修改原始文本，请检查输入和输出的文本（去掉标点之后）是否完全一致！！
+    重点要求：不要修改原始文本，请检查输入和输出的文本（去掉标点之后）是否完全一致！！「不要修改繁体到简体，或者简体到繁体。」
     文本为：\n
     {info}"""
     response = client.chat.completions.create(
@@ -34,7 +34,7 @@ def batch_punc(data, index, language):
         try:
             if json_results:
                 text_with_punc = json.loads(json_results[0])['punc_text']
-                punc_result_no_punc = re.sub('[，。？！、]', '', text_with_punc)
+                punc_result_no_punc = re.sub('[，：。？！、《》]', '', text_with_punc)
                 if text == punc_result_no_punc:
                     results_dict[item['wav_file']] = text_with_punc
                 else:
@@ -74,7 +74,7 @@ def main(args):
                 data.append({'wav_file': wav_file, 'text': text})
         print(len(data))
 
-        if not data:
+        if len(data) <= 500:
             break
 
         thead_nums = 128
@@ -101,7 +101,7 @@ def main(args):
 
     des_csv_file = csv_file.parent / 'metadata.csv'
     with open(des_csv_file, 'w') as f:
-        for wav, text in done_results:
+        for wav, text in done_results.items():
             f.write(f'{wav}|{text}\n')
         
 
