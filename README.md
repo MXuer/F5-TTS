@@ -100,12 +100,33 @@ conda activate f5-tts
 # Build from Dockerfile
 docker build -t f5tts:v1 .
 
-# Or pull from GitHub Container Registry
-docker pull ghcr.io/swivid/f5-tts:main
+# Run from GitHub Container Registry
+docker container run --rm -it --gpus=all --mount 'type=volume,source=f5-tts,target=/root/.cache/huggingface/hub/' -p 7860:7860 ghcr.io/swivid/f5-tts:main
+
+# Quickstart if you want to just run the web interface (not CLI)
+docker container run --rm -it --gpus=all --mount 'type=volume,source=f5-tts,target=/root/.cache/huggingface/hub/' -p 7860:7860 ghcr.io/swivid/f5-tts:main f5-tts_infer-gradio --host 0.0.0.0
 ```
+
+### Runtime
+
+Deployment solution with Triton and TensorRT-LLM.
+
+#### Benchmark Results
+Decoding on a single L20 GPU, using 26 different prompt_audio & target_text pairs.
+
+| Model               | Concurrency    | Avg Latency | RTF    | Mode            |
+|---------------------|----------------|-------------|--------|-----------------|
+| F5-TTS Base (Vocos) | 2              | 253 ms      | 0.0394 | Client-Server   |
+| F5-TTS Base (Vocos) | 1 (Batch_size) | -           | 0.0402 | Offline TRT-LLM |
+| F5-TTS Base (Vocos) | 1 (Batch_size) | -           | 0.1467 | Offline Pytorch |
+
+See [detailed instructions](src/f5_tts/runtime/triton_trtllm/README.md) for more information.
 
 
 ## Inference
+
+- In order to achieve desired performance, take a moment to read [detailed guidance](src/f5_tts/infer).
+- By properly searching the keywords of problem encountered, [issues](https://github.com/SWivid/F5-TTS/issues?q=is%3Aissue) are very helpful.
 
 ### 1. Gradio App
 
@@ -173,11 +194,6 @@ f5-tts_infer-cli -c custom.toml
 f5-tts_infer-cli -c src/f5_tts/infer/examples/multi/story.toml
 ```
 
-### 3. More instructions
-
-- In order to have better generation results, take a moment to read [detailed guidance](src/f5_tts/infer).
-- The [Issues](https://github.com/SWivid/F5-TTS/issues?q=is%3Aissue) are very useful, please try to find the solution by properly searching the keywords of problem encountered. If no answer found, then feel free to open an issue.
-
 
 ## Training
 
@@ -200,7 +216,7 @@ Read [training & finetuning guidance](src/f5_tts/train) for more instructions.
 
 ## Development
 
-Use pre-commit to ensure code quality (will run linters and formatters automatically)
+Use pre-commit to ensure code quality (will run linters and formatters automatically):
 
 ```bash
 pip install pre-commit
@@ -213,7 +229,7 @@ When making a pull request, before each commit, run:
 pre-commit run --all-files
 ```
 
-Note: Some model components have linting exceptions for E722 to accommodate tensor notation
+Note: Some model components have linting exceptions for E722 to accommodate tensor notation.
 
 
 ## Acknowledgements
@@ -228,6 +244,7 @@ Note: Some model components have linting exceptions for E722 to accommodate tens
 - [mrfakename](https://x.com/realmrfakename) huggingface space demo ~
 - [f5-tts-mlx](https://github.com/lucasnewman/f5-tts-mlx/tree/main) Implementation with MLX framework by [Lucas Newman](https://github.com/lucasnewman)
 - [F5-TTS-ONNX](https://github.com/DakeQQ/F5-TTS-ONNX) ONNX Runtime version by [DakeQQ](https://github.com/DakeQQ)
+- [Yuekai Zhang](https://github.com/yuekaizhang) Triton and TensorRT-LLM support ~
 
 ## Citation
 If our work and codebase is useful for you, please cite as:
