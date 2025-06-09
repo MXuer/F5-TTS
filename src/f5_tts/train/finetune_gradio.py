@@ -1198,7 +1198,7 @@ def get_random_sample_infer(project_name):
 
 
 def infer(
-    project, file_checkpoint, exp_name, ref_text, ref_audio, gen_text, nfe_step, use_ema, speed, seed, remove_silence
+    project, file_checkpoint, exp_name, ref_text, ref_audio, gen_text, nfe_step, use_ema, speed, seed, remove_silence, config_file
 ):
     global last_checkpoint, last_device, tts_api, last_ema
 
@@ -1231,6 +1231,11 @@ def infer(
     if seed == -1:  # -1 used for random
         seed = None
 
+    import yaml
+    bpe_model_path = None
+    if os.path.isfile(config_file):
+        bpe_model_path = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)['model']['bpe_model_path']
+    
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         tts_api.infer(
             ref_file=ref_audio,
@@ -1241,6 +1246,7 @@ def infer(
             remove_silence=remove_silence,
             file_wave=f.name,
             seed=seed,
+            bpe_model_path=bpe_model_path,
         )
         return f.name, tts_api.device, str(tts_api.seed)
 
@@ -1815,6 +1821,7 @@ Check the use_ema setting (True or False) for your model to see what works best 
 
             random_sample_infer = gr.Button("Random Sample")
 
+            config_file = gr.Textbox(label="Configure File", type="text")
             ref_text = gr.Textbox(label="Reference Text")
             ref_audio = gr.Audio(label="Reference Audio", type="filepath")
             gen_text = gr.Textbox(label="Text to Generate")
@@ -1844,6 +1851,7 @@ Check the use_ema setting (True or False) for your model to see what works best 
                     speed,
                     seed,
                     remove_silence,
+                    config_file,
                 ],
                 outputs=[gen_audio, txt_info_gpu, seed_info],
             )

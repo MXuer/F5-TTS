@@ -9,6 +9,7 @@ from datasets import load_from_disk
 from torch import nn
 from torch.utils.data import Dataset, Sampler
 from tqdm import tqdm
+import sentencepiece as spm
 
 from f5_tts.model.modules import MelSpec
 from f5_tts.model.utils import default
@@ -91,6 +92,8 @@ class CustomDataset(Dataset):
         win_length=1024,
         mel_spec_type="vocos",
         preprocessed_mel=False,
+        bpe_model_path: str = None,
+        tokenizer: str = "pinyin",
         mel_spec_module: nn.Module | None = None,
     ):
         self.data = custom_dataset
@@ -101,6 +104,10 @@ class CustomDataset(Dataset):
         self.win_length = win_length
         self.mel_spec_type = mel_spec_type
         self.preprocessed_mel = preprocessed_mel
+        self.bpe_model = None
+        if tokenizer == "bpe" and bpe_model_path is not None:
+            self.bpe_model = spm.SentencePieceProcessor()
+            self.bpe_model.load(bpe_model_path)
 
         if not preprocessed_mel:
             self.mel_spectrogram = default(
@@ -130,10 +137,17 @@ class CustomDataset(Dataset):
             row = self.data[index]
             audio_path = row["audio_path"]
             text = row["text"]
+            if text == "":
+                index = (index + 1) % len(self.data)
+                continue
+            if self.bpe_model is not None:
+                text = self.bpe_model.encode_as_pieces(text)
             duration = row["duration"]
-
+            if duration >= 30:
+                index = (index + 1) % len(self.data)
+                continue
             # filter by given length
-            if 0.3 <= duration <= 30:
+            if 0.3 <= duration <= 20:
                 break  # valid
 
             index = (index + 1) % len(self.data)
@@ -245,6 +259,7 @@ def load_dataset(
     tokenizer: str = "pinyin",
     dataset_type: str = "CustomDataset",
     audio_type: str = "raw",
+    bpe_model_path: str = None,
     mel_spec_module: nn.Module | None = None,
     mel_spec_kwargs: dict = dict(),
 ) -> CustomDataset | HFDataset:
@@ -274,6 +289,8 @@ def load_dataset(
             durations=durations,
             preprocessed_mel=preprocessed_mel,
             mel_spec_module=mel_spec_module,
+            tokenizer=tokenizer,
+            bpe_model_path=bpe_model_path,
             **mel_spec_kwargs,
         )
 
@@ -287,7 +304,10 @@ def load_dataset(
             data_dict = json.load(f)
         durations = data_dict["duration"]
         train_dataset = CustomDataset(
-            train_dataset, durations=durations, preprocessed_mel=preprocessed_mel, **mel_spec_kwargs
+            train_dataset, durations=durations, preprocessed_mel=preprocessed_mel, 
+            tokenizer=tokenizer,
+            bpe_model_path=bpe_model_path,
+            **mel_spec_kwargs
         )
 
     elif dataset_type == "HFDataset":

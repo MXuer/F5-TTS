@@ -25,7 +25,7 @@ def main(model_cfg):
     wandb_resume_id = None
 
     # set text tokenizer
-    if tokenizer != "custom":
+    if tokenizer not in ["custom", "bpe"]:
         tokenizer_path = model_cfg.datasets.name
     else:
         tokenizer_path = model_cfg.model.tokenizer_path
@@ -64,8 +64,8 @@ def main(model_cfg):
         local_vocoder_path=model_cfg.model.vocoder.local_path,
         model_cfg_dict=OmegaConf.to_container(model_cfg, resolve=True),
     )
-
-    train_dataset = load_dataset(model_cfg.datasets.name, tokenizer, mel_spec_kwargs=model_cfg.model.mel_spec)
+    bpe_model_path = model_cfg.model.bpe_model_path if tokenizer == "bpe" else None
+    train_dataset = load_dataset(model_cfg.datasets.name, tokenizer, bpe_model_path=bpe_model_path, mel_spec_kwargs=model_cfg.model.mel_spec)
     trainer.train(
         train_dataset,
         num_workers=model_cfg.datasets.num_workers,

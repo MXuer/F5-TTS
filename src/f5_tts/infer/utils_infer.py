@@ -396,6 +396,7 @@ def infer_process(
     speed=speed,
     fix_duration=fix_duration,
     device=device,
+    bpe_model_path=None,
 ):
     # Split the input text into batches
     audio, sr = torchaudio.load(ref_audio)
@@ -423,6 +424,7 @@ def infer_process(
             speed=speed,
             fix_duration=fix_duration,
             device=device,
+            bpe_model_path=bpe_model_path,
         )
     )
 
@@ -448,6 +450,7 @@ def infer_batch_process(
     device=None,
     streaming=False,
     chunk_size=2048,
+    bpe_model_path=None
 ):
     audio, sr = ref_audio
     if audio.shape[0] > 1:
@@ -474,8 +477,14 @@ def infer_batch_process(
 
         # Prepare the text
         text_list = [ref_text + gen_text]
-        final_text_list = convert_char_to_pinyin(text_list)
-
+        if bpe_model_path is None:
+            final_text_list = convert_char_to_pinyin(text_list)
+        else:
+            import sentencepiece as spm
+            bpe_model = spm.SentencePieceProcessor()
+            bpe_model.load(bpe_model_path)
+            final_text_list = [bpe_model.encode_as_pieces(ref_text + gen_text)]
+        print(final_text_list)
         ref_audio_len = audio.shape[-1] // hop_length
         if fix_duration is not None:
             duration = int(fix_duration * target_sample_rate / hop_length)

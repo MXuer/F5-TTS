@@ -9,6 +9,7 @@ import jieba
 import torch
 from pypinyin import Style, lazy_pinyin
 from torch.nn.utils.rnn import pad_sequence
+import sentencepiece as spm
 
 
 # seed everything
@@ -121,6 +122,13 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
         vocab_size = 256
 
     elif tokenizer == "custom":
+        with open(dataset_name, "r", encoding="utf-8") as f:
+            vocab_char_map = {}
+            for i, char in enumerate(f):
+                vocab_char_map[char[:-1]] = i
+        vocab_size = len(vocab_char_map)
+        
+    elif tokenizer == "bpe":
         with open(dataset_name, "r", encoding="utf-8") as f:
             vocab_char_map = {}
             for i, char in enumerate(f):
