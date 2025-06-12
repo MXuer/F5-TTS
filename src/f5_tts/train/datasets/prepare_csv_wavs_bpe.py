@@ -221,14 +221,14 @@ def save_prepped_dataset(out_dir, result, duration_list, text_vocab_set, is_fine
         json.dump({"duration": duration_list}, f, ensure_ascii=False)
 
     # Handle vocab file - write only once based on finetune flag
-    voca_out_path = out_dir / "vocab.txt"
-    if is_finetune:
-        file_vocab_finetune = PRETRAINED_VOCAB_PATH.as_posix()
-        shutil.copy2(file_vocab_finetune, voca_out_path)
-    else:
-        with open(voca_out_path.as_posix(), "w") as f:
-            for vocab in sorted(text_vocab_set):
-                f.write(vocab + "\n")
+    # voca_out_path = out_dir / "vocab.txt"
+    # if is_finetune:
+    #     file_vocab_finetune = PRETRAINED_VOCAB_PATH.as_posix()
+    #     shutil.copy2(file_vocab_finetune, voca_out_path)
+    # else:
+    #     with open(voca_out_path.as_posix(), "w") as f:
+    #         for vocab in sorted(text_vocab_set):
+    #             f.write(vocab + "\n")
 
     dataset_name = out_dir.stem
     print(f"\nFor {dataset_name}, sample count: {len(result)}")
