@@ -39,7 +39,7 @@ rel_path = str(files("f5_tts").joinpath("../../"))
 def main():
     parser = argparse.ArgumentParser(description="batch inference")
 
-    parser.add_argument("-s", "--seed", default=None, type=int)
+    parser.add_argument("-s", "--seed", default=0, type=int)
     parser.add_argument("-n", "--expname", required=True)
     parser.add_argument("-c", "--ckptstep", default=1250000, type=int)
 
@@ -48,6 +48,7 @@ def main():
     parser.add_argument("-ss", "--swaysampling", default=-1, type=float)
 
     parser.add_argument("-t", "--testset", required=True)
+    parser.add_argument("-v", "--is_tashkeel", action="store_true")
 
     args = parser.parse_args()
 
@@ -93,6 +94,13 @@ def main():
     elif testset == "seedtts_test_en":
         metalst = rel_path + "/data/seedtts_testset/en/meta.lst"
         metainfo = get_seedtts_testset_metainfo(metalst)
+        
+    elif testset == "dotts_test_ar":
+        if args.is_tashkeel:
+            metalst = rel_path + "/data/dotts_testset/ar/meta_tashkeel.lst"
+        else:
+            metalst = rel_path + "/data/dotts_testset/ar/meta.lst"
+        metainfo = get_seedtts_testset_metainfo(metalst)
 
     # path to save genereted wavs
     output_dir = (
@@ -103,6 +111,7 @@ def main():
         f"_cfg{cfg_strength}_speed{speed}"
         f"{'_gt-dur' if use_truth_duration else ''}"
         f"{'_no-ref-audio' if no_ref_audio else ''}"
+        f"{'_tashkeel' if args.is_tashkeel else ''}"
     )
 
     # -------------------------------------------------#
@@ -118,6 +127,7 @@ def main():
         target_rms=target_rms,
         use_truth_duration=use_truth_duration,
         infer_batch_size=infer_batch_size,
+        bpe_model_path=model_cfg.model.bpe_model_path
     )
 
     # Vocoder model

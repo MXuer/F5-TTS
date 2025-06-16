@@ -129,7 +129,8 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
         vocab_size = len(vocab_char_map)
         
     elif tokenizer == "bpe":
-        with open(dataset_name, "r", encoding="utf-8") as f:
+        tokenizer_path = os.path.join(files("f5_tts").joinpath("../../data"), f"{dataset_name}_{tokenizer}/vocab.txt")
+        with open(tokenizer_path, "r", encoding="utf-8") as f:
             vocab_char_map = {}
             for i, char in enumerate(f):
                 vocab_char_map[char[:-1]] = i

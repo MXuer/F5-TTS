@@ -1,5 +1,6 @@
 import math
 import os
+import re
 import random
 import string
 from pathlib import Path
@@ -8,11 +9,18 @@ import torch
 import torch.nn.functional as F
 import torchaudio
 from tqdm import tqdm
+from transformers import AutoProcessor, SeamlessM4Tv2Model
 
 from f5_tts.eval.ecapa_tdnn import ECAPA_TDNN_SMALL
 from f5_tts.model.modules import MelSpec
 from f5_tts.model.utils import convert_char_to_pinyin
 
+
+def remove_arabic_vowels(text):
+    # 定义阿拉伯语元音符号的Unicode范围
+    arabic_vowel_marks = re.compile(r'[\u0617-\u061A\u064B-\u0652]')
+    # 替换为无
+    return arabic_vowel_marks.sub('', text)
 
 # seedtts testset metainfo: utt, prompt_text, prompt_wav, gt_text, gt_wav
 def get_seedtts_testset_metainfo(metalst):
@@ -86,6 +94,7 @@ def get_inference_prompt(
     num_buckets=200,
     min_secs=3,
     max_secs=40,
+    bpe_model_path=None
 ):
     prompts_all = []
 
@@ -123,6 +132,11 @@ def get_inference_prompt(
         text = [prompt_text + gt_text]
         if tokenizer == "pinyin":
             text_list = convert_char_to_pinyin(text, polyphone=polyphone)
+        elif tokenizer == "bpe":
+            import sentencepiece as spm
+            bpe_model = spm.SentencePieceProcessor()
+            bpe_model.load(bpe_model_path)
+            text_list = bpe_model.encode_as_pieces(text)
         else:
             text_list = text
 
@@ -296,6 +310,10 @@ def load_asr_model(lang, ckpt_dir=""):
 
         model_size = "large-v3" if ckpt_dir == "" else ckpt_dir
         model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    elif lang == "ar":
+        processor = AutoProcessor.from_pretrained("facebook/seamless-m4t-v2-large")
+        model_ = SeamlessM4Tv2Model.from_pretrained("facebook/seamless-m4t-v2-large").to('cuda')
+        model = (model_, processor)
     return model
 
 
@@ -310,6 +328,8 @@ def run_asr_wer(args):
 
         torch.cuda.set_device(rank)
     elif lang == "en":
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
+    elif lang == "ar":
         os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     else:
         raise NotImplementedError(
@@ -335,6 +355,11 @@ def run_asr_wer(args):
             hypo = ""
             for segment in segments:
                 hypo = hypo + " " + segment.text
+        elif lang == "ar":
+            audio, orig_freq = torchaudio.load(gen_wav)
+            audio_inputs = asr_model[1](audios=audio, return_tensors="pt", sampling_rate=16000).to("cuda")
+            output_tokens = asr_model[0].generate(**audio_inputs, tgt_lang='arb', generate_speech=False)
+            hypo = asr_model[1].decode(output_tokens[0].tolist()[0], skip_special_tokens=True)
 
         raw_truth = truth
         raw_hypo = hypo
@@ -352,6 +377,11 @@ def run_asr_wer(args):
         elif lang == "en":
             truth = truth.lower()
             hypo = hypo.lower()
+        elif lang == "ar":
+            truth = remove_arabic_vowels(truth)
+            hypo = remove_arabic_vowels(hypo)
+            truth = re.sub('[.،;:?!؟]', '', truth)
+            hypo = re.sub('[.،;:?!؟]', '', hypo)
 
         measures = compute_measures(truth, hypo)
         wer = measures["wer"]

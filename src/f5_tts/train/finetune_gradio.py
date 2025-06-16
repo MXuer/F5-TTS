@@ -1234,7 +1234,7 @@ def infer(
     import yaml
     bpe_model_path = None
     if os.path.isfile(config_file):
-        bpe_model_path = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)['model']['bpe_model_path']
+        bpe_model_path = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)['model'].get('bpe_model_path', None)
     
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         tts_api.infer(
