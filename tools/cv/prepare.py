@@ -15,9 +15,11 @@ def get_commonvoice_metainfo(cv_dir: Path, setname: str = 'validated'):
     data_infos = []
     for line in tqdm(open(tsv_file, "r").readlines()[1:], desc=f'reading {tsv_file}'):
         client_id, path, _, text, *_ = line.strip().split("\t")
-        wav_path = cv_dir / 'clips_wav_16k' / (path[:-4] + '.wav')
+        wav_path = cv_dir / 'clips_24k' / (path[:-4] + '.wav')
         data_infos.append([wav_path, text])
     return data_infos
+
+
 def main(args):
     cv_dir = Path(args.cv_dir) / args.lang
     dataset_dir = Path(args.dataset_dir) / f'{args.lang}_bpe'
@@ -39,7 +41,7 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--lang',
                         type=str,
-                        default='ug',
+                        default='fr',
                         help='language to generate testset for')
     args = parser.parse_args()
     main(args)

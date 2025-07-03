@@ -208,7 +208,12 @@ class DiT(nn.Module):
                     self.text_cond = self.text_embed(text, seq_len, drop_text=False)
                 text_embed = self.text_cond
         else:
-            text_embed = self.text_embed(text, seq_len, drop_text=drop_text)
+            text_embed = self.text_embed(text, seq_len, drop_text=drop_text) # b n -> b n d
+        # x: b, seq_len, n_mel
+        # cond: b, seq_len, n_mel
+        # text: b, seq_len, n_embed
+        # -> self.input_embed
+        # x: b, seq_len, n_mel*2+n_embed
         x = self.input_embed(x, cond, text_embed, drop_audio_cond=drop_audio_cond)
 
         rope = self.rotary_embed.forward_from_seq_len(seq_len)

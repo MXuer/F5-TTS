@@ -22,7 +22,7 @@ rel_path = str(files("f5_tts").joinpath("../../"))
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--eval_task", type=str, default="wer", choices=["sim", "wer"])
-    parser.add_argument("-l", "--lang", type=str, default="ar", choices=["zh", "en", "ar"])
+    parser.add_argument("-l", "--lang", type=str, default="bo", choices=["zh", "en", "ar", "bo"])
     parser.add_argument("-g", "--gen_wav_dir", type=str, required=True)
     parser.add_argument("-n", "--gpu_nums", type=int, default=8, help="Number of GPUs to use")
     parser.add_argument("--local", action="store_true", help="Use local custom checkpoint directory")
@@ -49,6 +49,8 @@ def main():
             asr_ckpt_dir = "../checkpoints/Systran/faster-whisper-large-v3"
         elif lang == "ar":
             asr_ckpt_dir = "../checkpoints/Systran/faster-whisper-large-v3"
+        elif lang == "bo":
+            asr_ckpt_dir = "dataocean"
     else:
         asr_ckpt_dir = ""  # auto download to cache dir
     wavlm_ckpt_dir = "../checkpoints/UniSpeech/wavlm_large_finetune.pth"

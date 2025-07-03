@@ -101,6 +101,15 @@ def main():
         else:
             metalst = rel_path + "/data/dotts_testset/ar/meta.lst"
         metainfo = get_seedtts_testset_metainfo(metalst)
+        
+    elif testset == "dotts_test_bo":
+        metalst = rel_path + "/data/dotts_testset/bo/meta.lst"
+        metainfo = get_seedtts_testset_metainfo(metalst)
+        
+    elif testset == "dotts_test_bo_tiny":
+        metalst = rel_path + "/data/dotts_testset/bo_tiny/meta.lst"
+        metainfo = get_seedtts_testset_metainfo(metalst)
+        
 
     # path to save genereted wavs
     output_dir = (

@@ -222,6 +222,12 @@ def load_checkpoint(model, ckpt_path, device: str, dtype=None, use_ema=True):
     else:
         if ckpt_type == "safetensors":
             checkpoint = {"model_state_dict": checkpoint}
+            
+        # patch for backward compatibility, 305e3ea
+        for key in ["mel_spec.mel_stft.mel_scale.fb", "mel_spec.mel_stft.spectrogram.window"]:
+            if key in checkpoint["model_state_dict"]:
+                del checkpoint["model_state_dict"][key]
+
         model.load_state_dict(checkpoint["model_state_dict"])
 
     del checkpoint
@@ -365,11 +371,12 @@ def preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=print):
         show_info("Using custom reference text...")
 
     # Ensure ref_text ends with a proper sentence-ending punctuation
-    if not ref_text.endswith(". ") and not ref_text.endswith("。"):
-        if ref_text.endswith("."):
-            ref_text += " "
-        else:
-            ref_text += ". "
+    # if not ref_text.endswith(". ") and not ref_text.endswith("。"):
+    #     if ref_text.endswith("."):
+    #         ref_text += " "
+    #     else:
+    #         ref_text += ". "
+    ref_text = ref_text + ' '
 
     print("\nref_text  ", ref_text)
 
@@ -474,6 +481,7 @@ def infer_batch_process(
         local_speed = speed
         if len(gen_text.encode("utf-8")) < 10:
             local_speed = 0.3
+        print(local_speed)
 
         # Prepare the text
         text_list = [ref_text + gen_text]
@@ -489,9 +497,15 @@ def infer_batch_process(
         if fix_duration is not None:
             duration = int(fix_duration * target_sample_rate / hop_length)
         else:
-            # Calculate duration
-            ref_text_len = len(ref_text.encode("utf-8"))
-            gen_text_len = len(gen_text.encode("utf-8"))
+            if bpe_model_path is None:
+                # Calculate duration
+                ref_text_len = len(ref_text.encode("utf-8"))
+                gen_text_len = len(gen_text.encode("utf-8"))
+            else:
+                ref_text_len = len(bpe_model.encode_as_pieces(ref_text))
+                gen_text_len = len(bpe_model.encode_as_pieces(gen_text))
+            print(ref_text_len, gen_text_len)
+            print(len(ref_text.encode("utf-8")), len(gen_text.encode("utf-8")))
             duration = ref_audio_len + int(ref_audio_len / ref_text_len * gen_text_len / local_speed)
 
         # inference

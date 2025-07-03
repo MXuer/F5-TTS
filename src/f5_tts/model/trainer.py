@@ -225,6 +225,17 @@ class Trainer:
             if key in checkpoint["ema_model_state_dict"]:
                 del checkpoint["ema_model_state_dict"][key]
 
+        #NOTE: @duhu:loading pretrained model with different vocab size
+        # that means the embedding part will be random initialized while other modules
+        # will load the pretrained params.
+        
+        pretrained_embedding = checkpoint["ema_model_state_dict"]['ema_model.transformer.text_embed.text_embed.weight']
+        current_embedding = self.model.module.state_dict()['transformer.text_embed.text_embed.weight']
+        # if not equal, the weights in checkpoint will be replaced by the current model's initialized weights.
+        if pretrained_embedding.size() != current_embedding.size():
+            print(f'{pretrained_embedding.size()} | {current_embedding.size()} is not matching. So random initialized...')
+            checkpoint["ema_model_state_dict"]['ema_model.transformer.text_embed.text_embed.weight'] = current_embedding
+
         if self.is_main:
             self.ema_model.load_state_dict(checkpoint["ema_model_state_dict"])
 

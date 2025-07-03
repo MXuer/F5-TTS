@@ -37,7 +37,7 @@ def is_csv_wavs_format(input_dataset_dir):
 BATCH_SIZE = 100  # Batch size for text conversion
 MAX_WORKERS = max(1, multiprocessing.cpu_count() - 1)  # Leave one CPU free
 THREAD_NAME_PREFIX = "AudioProcessor"
-CHUNK_SIZE = 100  # Number of files to process per worker batch
+CHUNK_SIZE = 10000  # Number of files to process per worker batch
 
 executor = None  # Global executor for cleanup
 
@@ -64,13 +64,15 @@ def graceful_exit():
             executor.shutdown(wait=False)
 
 
-def process_audio_file(audio_path, text, polyphone):
+def process_audio_file(audio_path, text, polyphone, dur_dict={}):
     """Process a single audio file by checking its existence and extracting duration."""
     if not Path(audio_path).exists():
         print(f"audio {audio_path} not found, skipping")
         return None
     try:
-        audio_duration = get_audio_duration(audio_path)
+        audio_duration = dur_dict.get(audio_path, None)
+        if audio_duration is None:
+            audio_duration = get_audio_duration(audio_path)
         if audio_duration <= 0:
             raise ValueError(f"Duration {audio_duration} is non-positive.")
         return (audio_path, text, audio_duration)
@@ -102,6 +104,12 @@ def prepare_csv_wavs_dir(input_dir, num_workers=None, tokenizer="pinyin"):
     worker_count = num_workers if num_workers is not None else min(MAX_WORKERS, total_files)
     print(f"\nProcessing {total_files} audio files using {worker_count} workers...")
 
+    raw_dur_json = input_dir / 'raw_dur.json'
+    if raw_dur_json.exists():
+        print(f'Loading existed duration for {raw_dur_json}')
+        dur_dict = json.load(open(raw_dur_json))
+    else:
+        dur_dict = {}
     with graceful_exit():
         # Initialize thread pool with optimized settings
         with concurrent.futures.ThreadPoolExecutor(
@@ -114,7 +122,7 @@ def prepare_csv_wavs_dir(input_dir, num_workers=None, tokenizer="pinyin"):
             for i in range(0, len(audio_path_text_pairs), CHUNK_SIZE):
                 chunk = audio_path_text_pairs[i : i + CHUNK_SIZE]
                 # Submit futures in order
-                chunk_futures = [executor.submit(process_audio_file, pair[0], pair[1], polyphone) for pair in chunk]
+                chunk_futures = [executor.submit(process_audio_file, pair[0], pair[1], polyphone, dur_dict) for pair in chunk]
 
                 # Iterate over futures in the original submission order to preserve ordering
                 for future in tqdm(
@@ -220,15 +228,6 @@ def save_prepped_dataset(out_dir, result, duration_list, text_vocab_set, is_fine
     with open(dur_json_path.as_posix(), "w", encoding="utf-8") as f:
         json.dump({"duration": duration_list}, f, ensure_ascii=False)
 
-    # Handle vocab file - write only once based on finetune flag
-    # voca_out_path = out_dir / "vocab.txt"
-    # if is_finetune:
-    #     file_vocab_finetune = PRETRAINED_VOCAB_PATH.as_posix()
-    #     shutil.copy2(file_vocab_finetune, voca_out_path)
-    # else:
-    #     with open(voca_out_path.as_posix(), "w") as f:
-    #         for vocab in sorted(text_vocab_set):
-    #             f.write(vocab + "\n")
 
     dataset_name = out_dir.stem
     print(f"\nFor {dataset_name}, sample count: {len(result)}")

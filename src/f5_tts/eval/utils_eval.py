@@ -14,6 +14,7 @@ from transformers import AutoProcessor, SeamlessM4Tv2Model
 from f5_tts.eval.ecapa_tdnn import ECAPA_TDNN_SMALL
 from f5_tts.model.modules import MelSpec
 from f5_tts.model.utils import convert_char_to_pinyin
+from f5_tts.eval.dataocean import get_app_key, recognize_short
 
 
 def remove_arabic_vowels(text):
@@ -239,8 +240,9 @@ def get_seed_tts_test(metalst, gen_wav_dir, gpus):
         gen_wav = os.path.join(gen_wav_dir, utt + ".wav")
         if not os.path.isabs(prompt_wav):
             prompt_wav = os.path.join(os.path.dirname(metalst), prompt_wav)
-
-        test_set_.append((gen_wav, prompt_wav, gt_text))
+        gt_name = utt.split('-')[1] + '.wav'
+        gt_wav = os.path.join(os.path.dirname(metalst), 'wavs', gt_name)
+        test_set_.append((gen_wav, prompt_wav, gt_text, gt_wav))
 
     num_jobs = len(gpus)
     if num_jobs == 1:
@@ -295,6 +297,8 @@ def get_librispeech_test(metalst, gen_wav_dir, gpus, librispeech_test_clean_path
 
 
 def load_asr_model(lang, ckpt_dir=""):
+    if lang == "bo":
+        return None
     if lang == "zh":
         from funasr import AutoModel
 
@@ -316,21 +320,23 @@ def load_asr_model(lang, ckpt_dir=""):
         model = (model_, processor)
     return model
 
+appkey = get_app_key()
 
 # WER Evaluation, the way Seed-TTS does
 
 
 def run_asr_wer(args):
     rank, lang, test_set, ckpt_dir = args
-
+    print(ckpt_dir)
     if lang == "zh":
         import zhconv
-
         torch.cuda.set_device(rank)
     elif lang == "en":
         os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     elif lang == "ar":
         os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
+    elif lang == "bo":
+        pass
     else:
         raise NotImplementedError(
             "lang support only 'zh' (funasr paraformer-zh), 'en' (faster-whisper-large-v3), for now."
@@ -345,7 +351,7 @@ def run_asr_wer(args):
 
     from jiwer import compute_measures
 
-    for gen_wav, prompt_wav, truth in tqdm(test_set):
+    for gen_wav, prompt_wav, truth, gt_wav in tqdm(test_set):
         if lang == "zh":
             res = asr_model.generate(input=gen_wav, batch_size_s=300, disable_pbar=True)
             hypo = res[0]["text"]
@@ -360,7 +366,8 @@ def run_asr_wer(args):
             audio_inputs = asr_model[1](audios=audio, return_tensors="pt", sampling_rate=16000).to("cuda")
             output_tokens = asr_model[0].generate(**audio_inputs, tgt_lang='arb', generate_speech=False)
             hypo = asr_model[1].decode(output_tokens[0].tolist()[0], skip_special_tokens=True)
-
+        elif lang == "bo":
+            hypo = recognize_short(gen_wav, 'bo_lhasa', appkey)
         raw_truth = truth
         raw_hypo = hypo
 
@@ -382,14 +389,16 @@ def run_asr_wer(args):
             hypo = remove_arabic_vowels(hypo)
             truth = re.sub('[.،;:?!؟]', '', truth)
             hypo = re.sub('[.،;:?!؟]', '', hypo)
-
+        elif lang == "bo":
+            truth = ' '.join(list(truth))
+            hypo = ' '.join(list(hypo))
         measures = compute_measures(truth, hypo)
         wer = measures["wer"]
 
-        # ref_list = truth.split(" ")
-        # subs = measures["substitutions"] / len(ref_list)
-        # dele = measures["deletions"] / len(ref_list)
-        # inse = measures["insertions"] / len(ref_list)
+        ref_list = truth.split(" ")
+        subs = measures["substitutions"] / len(ref_list)
+        dele = measures["deletions"] / len(ref_list)
+        inse = measures["insertions"] / len(ref_list)
 
         wer_results.append(
             {
@@ -397,6 +406,10 @@ def run_asr_wer(args):
                 "truth": raw_truth,
                 "hypo": raw_hypo,
                 "wer": wer,
+                "sub": subs,
+                "del": dele,
+                "ins": inse,
+                "total": len(ref_list)
             }
         )
 

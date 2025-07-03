@@ -165,6 +165,18 @@ class SinusPositionEmbedding(nn.Module):
 
 
 class ConvPositionEmbedding(nn.Module):
+    """
+    这段代码定义的 ConvPositionEmbedding 类用的是一种 卷积式的位置编码方法（Convolutional Positional Embedding），它可以在**不使用可学习位置编码向量或固定位置编码（如正余弦编码）**的前提下，引入序列中 相对位置信息（local positional bias）。
+    一、它为什么可以作为 Position Embedding？
+
+    因为它用的是 深度卷积（Depthwise Convolution），在序列维度（n）上滑动操作，相当于让模型学习一个“以某个 token 为中心，对周围邻域的上下文位置进行加权融合”的过程。
+
+    核心思想：
+        •	卷积核滑动的过程，自然引入了位置信息，尤其是相对位置（比如 token 左边 3 个、右边 2 个等）。
+        •	卷积操作是 位置感知的（position-sensitive），不像线性层，它对 token 的顺序是敏感的。
+        •	多层非线性激活（Mish）增加了表达能力，相当于可以学习到更加复杂的相对位置函数。
+    卷积操作是在 token 维度（n）上进行的，每个位置的 token embedding 会融合邻居的信息，生成的位置感知 embedding。
+    """
     def __init__(self, dim, kernel_size=31, groups=16):
         super().__init__()
         assert kernel_size % 2 != 0
